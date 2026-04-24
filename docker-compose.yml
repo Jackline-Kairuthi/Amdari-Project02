@@ -1,4 +1,3 @@
-
 # SecureFlow docker-compose — INTENTIONALLY VULNERABLE.
 # Planted vulnerabilities:
 #   IV-01  hardcoded DB password
