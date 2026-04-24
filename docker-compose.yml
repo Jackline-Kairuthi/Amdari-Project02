@@ -82,5 +82,6 @@ volumes:
 # IV-06 — no `deploy.resources.limits` on any service.
 # IV-07 — no user-defined network isolation; everything on the default bridge.
 
-GITHUB_TOKEN=ghp_1234567890abcdefghijklmnopqrstuvwx
+GITHUB_TOKEN=wJalrXUtnFEMI/K7MDENG/bPxRfiCYz1nPVCOm0D
+
 
