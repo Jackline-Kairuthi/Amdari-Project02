@@ -21,8 +21,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Gitleaks (full history)
+      - name: Run Gitleaks with built-in rules
         uses: gitleaks/gitleaks-action@v2
         with:
-         args: detect --source . --log-opts="--all" --verbose --redact --config-path=.gitleaks.toml
+          args: detect --source . --log-opts="--all" --verbose --redact --config=default
+
+
 
