@@ -1,0 +1,13 @@
+title = "Gitleaks Config"
+
+[[rules]]
+id = "postgres-password"
+description = "Detect Postgres hardcoded passwords"
+regex = '''POSTGRES_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9]+["']?'''
+tags = ["db", "postgres", "password"]
+
+[[rules]]
+id = "generic-password"
+description = "Detect generic hardcoded passwords"
+regex = '''(?i)(password|passwd|pwd)\s*[:=]\s*['"]?[A-Za-z0-9!@#$%^&*()_+=\-]{4,}['"]?'''
+tags = ["password", "hardcoded"]
