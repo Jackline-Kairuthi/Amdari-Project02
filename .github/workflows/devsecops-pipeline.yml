@@ -19,7 +19,7 @@ jobs:
       - name: Checkout full history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # required for --all
+          fetch-depth: 0
 
       - name: Run Gitleaks (full history)
         uses: gitleaks/gitleaks-action@v2
