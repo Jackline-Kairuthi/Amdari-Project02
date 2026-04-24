@@ -81,3 +81,5 @@ volumes:
 
 # IV-06 — no `deploy.resources.limits` on any service.
 # IV-07 — no user-defined network isolation; everything on the default bridge.
+
+AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYz1nPVCOm0D
