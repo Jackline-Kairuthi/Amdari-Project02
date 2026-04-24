@@ -19,9 +19,11 @@ jobs:
       - name: Checkout full history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # required for full history
+          fetch-depth: 0
 
-      - name: Run Gitleaks with built-in rules (full history)
+      - name: Run Gitleaks (full history)
         uses: gitleaks/gitleaks-action@v2
         with:
-          args: detect --source . --log-opts="--all" --verbose --redact
+          args: detect --source . --log-opts="--all" --verbose --redact --config=default
+
+
