@@ -1,23 +1,23 @@
 title = "Gitleaks Custom Rules"
 
-# Detect Postgres hardcoded passwords in docker-compose.yml
+# Detect Postgres hardcoded passwords
 [[rules]]
 id = "postgres-password"
 description = "Detect Postgres hardcoded passwords"
-regex = '''(?i)POSTGRES_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9!@#$%^&*()_+=\-]{4,}["']?'''
+regex = '''(?i)POSTGRES_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9!@#$%^&*()_+=\-]+["']?'''
 tags = ["db", "postgres", "password"]
 
 # Detect generic hardcoded passwords
 [[rules]]
 id = "generic-password"
 description = "Detect generic hardcoded passwords"
-regex = '''(?i)(PASSWORD|PASSWD|PWD|DB_PASSWORD)\s*[:=]\s*["']?[A-Za-z0-9!@#$%^&*()_+=\-]{4,}["']?'''
+regex = '''(?i)(PASSWORD|PASSWD|PWD|DB_PASSWORD)\s*[:=]\s*["']?[A-Za-z0-9!@#$%^&*()_+=\-]+["']?'''
 tags = ["password", "hardcoded"]
 
-# Detect common secret patterns (SECRET_KEY, SESSION_SECRET, API keys)
+# Detect common secret patterns
 [[rules]]
 id = "generic-secret"
 description = "Detect common secret-like values"
-regex = '''(?i)(SECRET|SECRET_KEY|SESSION_SECRET|API_KEY|TOKEN)\s*[:=]\s*["']?[A-Za-z0-9_\-]{8,}["']?'''
+regex = '''(?i)(SECRET|SECRET_KEY|SESSION_SECRET|API_KEY|TOKEN)\s*[:=]\s*["']?[A-Za-z0-9_\-]+["']?'''
 tags = ["secret", "key", "token"]
 
