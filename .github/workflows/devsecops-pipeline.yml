@@ -27,21 +27,23 @@ jobs:
 
       - name: Install Gitleaks + jq
         run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks
-          chmod +x gitleaks
-          sudo mv gitleaks /usr/local/bin/gitleaks
           sudo apt-get update -y
-          sudo apt-get install -y jq
+          sudo apt-get install -y jq wget
+          wget https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64
+          chmod +x gitleaks-linux-amd64
+          sudo mv gitleaks-linux-amd64 /usr/local/bin/gitleaks
 
-      - name: Run Gitleaks (full history) with custom + built-in rules
+      - name: Run Gitleaks with custom config
         run: |
+          echo "Running Gitleaks..."
           gitleaks detect \
             --source "${GITHUB_WORKSPACE}" \
             --log-opts="--all" \
             --config "${GITHUB_WORKSPACE}/.gitleaks.toml" \
             --report-format json \
-            --report-path gitleaks-report.json \
+            --report-path "${GITHUB_WORKSPACE}/gitleaks-report.json" \
             --redact || true
+          echo "Gitleaks finished."
 
       - name: Upload Gitleaks Findings Artefact
         if: always()
@@ -54,8 +56,8 @@ jobs:
         if: always()
         run: |
           if [ ! -f gitleaks-report.json ]; then
-            echo "No gitleaks JSON produced; treating as no leaks."
-            exit 0
+            echo "ERROR: gitleaks-report.json not found. Gitleaks did not run."
+            exit 1
           fi
 
           count=$(jq 'if type=="array" then length elif has("leaks") then .leaks|length else 0 end' gitleaks-report.json || echo 0)
@@ -118,4 +120,3 @@ jobs:
           else
             echo "No CRITICAL/BLOCKER issues. Passing pipeline."
             exit 0
-          fi
