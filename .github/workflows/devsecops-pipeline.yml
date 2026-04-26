@@ -8,35 +8,64 @@ on:
 
 jobs:
   hello-world:
+    name: Hello World
     runs-on: ubuntu-latest
     steps:
       - name: Print Hello World
         run: echo "Hello World from DevSecOps Pipeline!"
 
   gitleaks-scan:
+    name: Gitleaks Full History Scan
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - name: Checkout full history
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          fetch-tags: true
           persist-credentials: false
           clean: true
 
-      - name: Run Gitleaks with custom rules
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq curl
+
+      - name: Run Gitleaks (full history) and produce JSON
         uses: gitleaks/gitleaks-action@v2
         with:
-          args: detect --source . --log-opts="--all" --config=.gitleaks.toml --verbose --redact --report-format=json --report-path=gitleaks-report.json
+          args: >
+            detect
+            --source .
+            --log-opts="--all"
+            --config=.gitleaks.toml
+            --report-format=json
+            --report-path=gitleaks-report.json
+            --redact
 
       - name: Upload Gitleaks Findings Artefact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-findings
           path: gitleaks-report.json
 
+      - name: Fail if Gitleaks found leaks
+        if: always()
+        run: |
+          if [ ! -f gitleaks-report.json ]; then
+            echo "No gitleaks JSON produced; treating as no leaks."
+            exit 0
+          fi
+          count=$(jq 'if type=="array" then length elif has("leaks") then .leaks|length else 0 end' gitleaks-report.json || echo 0)
+          echo "Gitleaks findings count: $count"
+          if [ "$count" -gt 0 ]; then
+            echo "Gitleaks detected secrets. Failing job."
+            jq '.' gitleaks-report.json || true
+            exit 1
+          fi
+
   sonar-scan:
+    name: SonarCloud Scan
     runs-on: ubuntu-latest
     needs: gitleaks-scan
     steps:
@@ -52,6 +81,7 @@ jobs:
           SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
 
   quality-gate:
+    name: Sonar Quality Gate
     runs-on: ubuntu-latest
     needs: sonar-scan
     steps:
@@ -63,9 +93,9 @@ jobs:
 
       - name: Download Sonar Issues JSON
         run: |
-          curl -u "${{ secrets.SONAR_TOKEN }}:" \
-          "${{ secrets.SONAR_HOST_URL }}/api/issues/search?componentKeys=${{ secrets.SONAR_PROJECT_KEY }}" \
-          -o sonar-findings.json
+          curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "${{ secrets.SONAR_HOST_URL }}/api/issues/search?componentKeys=${{ secrets.SONAR_PROJECT_KEY }}" \
+            -o sonar-findings.json || true
 
       - name: Upload Sonar Findings Artefact
         uses: actions/upload-artifact@v4
