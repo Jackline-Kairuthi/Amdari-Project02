@@ -8,31 +8,31 @@ useDefault = true
 [[rules]]
 id = "flask-secret-key"
 description = "Detect Flask SECRET_KEY"
-regex = '''(?i)SECRET_KEY\s*[:=]\s*["']?[A-Za-z0-9._%+/=-]{6,}["']?'''
+regex = '''(?i)SECRET_KEY\s*[:=]\s*["']?[A-Za-z0-9._%+/=\-]{6,}["']?'''
 tags = ["secret", "flask", "key"]
 
 [[rules]]
 id = "flask-session-secret"
 description = "Detect Flask SESSION_SECRET"
-regex = '''(?i)SESSION_SECRET\s*[:=]\s*["']?[A-Za-z0-9._%+/=-]{6,}["']?'''
+regex = '''(?i)SESSION_SECRET\s*[:=]\s*["']?[A-Za-z0-9._%+/=\-]{6,}["']?'''
 tags = ["secret", "flask", "session"]
 
 [[rules]]
 id = "jwt-secret"
 description = "Detect JWT secret keys"
-regex = '''(?i)JWT_SECRET\s*[:=]\s*["']?[A-Za-z0-9._%+/=-]{6,}["']?'''
+regex = '''(?i)JWT_SECRET\s*[:=]\s*["']?[A-Za-z0-9._%+/=\-]{6,}["']?'''
 tags = ["secret", "jwt", "token"]
 
 [[rules]]
 id = "db-password"
 description = "Detect DB_PASSWORD"
-regex = '''(?i)DB_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9._%+/=-]{3,}["']?'''
+regex = '''(?i)DB_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9._%+/=\-]{3,}["']?'''
 tags = ["secret", "database", "password"]
 
 [[rules]]
 id = "postgres-password"
 description = "Detect POSTGRES_PASSWORD"
-regex = '''(?i)POSTGRES_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9._%+/=-]{3,}["']?'''
+regex = '''(?i)POSTGRES_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9._%+/=\-]{3,}["']?'''
 tags = ["secret", "postgres", "password"]
 
 [[rules]]
@@ -46,6 +46,12 @@ id = "sqlalchemy-uri"
 description = "Detect SQLAlchemy URIs"
 regex = '''(?i)SQLALCHEMY_DATABASE_URI\s*=\s*["']?(postgresql|mysql|sqlite)://[^"']+'''
 tags = ["secret", "sqlalchemy", "database"]
+
+[[rules]]
+id = "generic-password"
+description = "Detect generic PASSWORD= patterns"
+regex = '''(?i)\bPASSWORD\s*[:=]\s*["']?[A-Za-z0-9._%+/=\-]{3,}["']?'''
+tags = ["secret", "password"]
 
 [allowlist]
 paths = [
