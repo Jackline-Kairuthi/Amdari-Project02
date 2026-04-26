@@ -1,4 +1,4 @@
-# SecureFlow docker-compose — INTENTIONALLY VULNERABLE
+# SecureFlow docker-compose — INTENTIONALLY VULNERABLE.
 # Planted vulnerabilities:
 #   IV-01  hardcoded DB password
 #   IV-02  databases exposed on host network (ports 5432, 5433)
