@@ -58,3 +58,10 @@ paths = [
   '''\.md$''',
   '''LICENSE'''
 ]
+
+[[rules]]
+id = "yaml-env-secrets"
+description = "Catch secrets in YAML environment blocks"
+regex = '''(?i)(password|secret|token)\s*[:=]\s*[A-Za-z0-9._\-]{3,}'''
+tags = ["secret", "yaml", "env"]
+
