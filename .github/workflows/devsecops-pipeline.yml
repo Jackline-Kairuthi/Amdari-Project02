@@ -37,9 +37,9 @@ jobs:
         with:
           args: >
             detect
-            --source .
+            --source="${{ github.workspace }}"
             --log-opts="--all"
-            --config=.gitleaks.toml
+            --config="${{ github.workspace }}/.gitleaks.toml"
             --report-format=json
             --report-path=gitleaks-report.json
             --redact
@@ -120,4 +120,3 @@ jobs:
             echo "No CRITICAL/BLOCKER issues. Passing pipeline."
             exit 0
           fi
-
