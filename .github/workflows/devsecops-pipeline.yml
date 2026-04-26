@@ -49,15 +49,17 @@ jobs:
           name: gitleaks-findings
           path: gitleaks-report.json
 
-      - name: Fail if Gitleaks found leaks
+      - name: Hard-fail on any Gitleaks finding
         if: always()
         run: |
           if [ ! -f gitleaks-report.json ]; then
             echo "No gitleaks JSON produced; treating as no leaks."
             exit 0
           fi
+
           count=$(jq 'if type=="array" then length elif has("leaks") then .leaks|length else 0 end' gitleaks-report.json || echo 0)
           echo "Gitleaks findings count: $count"
+
           if [ "$count" -gt 0 ]; then
             echo "Gitleaks detected secrets. Failing job."
             jq '.' gitleaks-report.json || true
@@ -86,6 +88,7 @@ jobs:
     needs: sonar-scan
     steps:
       - name: Wait for SonarCloud Quality Gate
+        id: gate
         uses: SonarSource/sonarqube-quality-gate-action@v1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -102,3 +105,16 @@ jobs:
         with:
           name: sonar-findings
           path: sonar-findings.json
+
+      - name: Hard-fail only on CRITICAL/BLOCKER
+        run: |
+          status="${{ steps.gate.outputs.quality-gate-status }}"
+          echo "Quality Gate status: $status"
+
+          if [ "$status" = "ERROR" ]; then
+            echo "CRITICAL/BLOCKER issues detected. Failing pipeline."
+            exit 1
+          else
+            echo "No CRITICAL/BLOCKER issues. Passing pipeline."
+            exit 0
+          fi
