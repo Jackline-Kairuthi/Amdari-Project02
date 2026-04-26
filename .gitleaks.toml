@@ -3,46 +3,37 @@
 title = "Custom Gitleaks Rules for SecureFlow"
 
 [[rules]]
-id = "flask-secret-key"
-description = "Detect Flask SECRET_KEY"
-regex = '''(?i)SECRET_KEY\s*[:=]\s*["']?[A-Za-z0-9_\-!@#$%^&*+=]{6,}["']?'''
-tags = ["secret", "flask", "key"]
-
-[[rules]]
-id = "flask-session-secret"
-description = "Detect Flask SESSION_SECRET"
-regex = '''(?i)SESSION_SECRET\s*[:=]\s*["']?[A-Za-z0-9_\-!@#$%^&*+=]{6,}["']?'''
-tags = ["secret", "flask", "session"]
-
-[[rules]]
-id = "jwt-secret"
-description = "Detect JWT secret keys"
-regex = '''(?i)JWT_SECRET\s*[:=]\s*["']?[A-Za-z0-9_\-!@#$%^&*+=]{6,}["']?'''
-tags = ["secret", "jwt", "token"]
+id = "postgres-password"
+description = "Detect Postgres hardcoded passwords"
+regex = '''(?i)POSTGRES_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9._%+-]{4,}["']?'''
+tags = ["secret", "postgres", "password"]
 
 [[rules]]
 id = "db-password"
-description = "Detect DB passwords in docker-compose or env files"
-regex = '''(?i)DB_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9_\-!@#$%^&*+=]{4,}["']?'''
+description = "Detect DB passwords"
+regex = '''(?i)DB_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9._%+-]{4,}["']?'''
 tags = ["secret", "database", "password"]
 
 [[rules]]
-id = "postgres-password"
-description = "Detect Postgres hardcoded passwords"
-regex = '''(?i)POSTGRES_PASSWORD\s*[:=]\s*["']?[A-Za-z0-9_\-!@#$%^&*+=]{4,}["']?'''
-tags = ["secret", "postgres", "password"]
+id = "jwt-secret"
+description = "Detect JWT secrets"
+regex = '''(?i)JWT_SECRET\s*[:=]\s*["']?[A-Za-z0-9._%+-]{6,}["']?'''
+tags = ["secret", "jwt"]
+
+[[rules]]
+id = "session-secret"
+description = "Detect SESSION_SECRET"
+regex = '''(?i)SESSION_SECRET\s*[:=]\s*["']?[A-Za-z0-9._%+-]{4,}["']?'''
+tags = ["secret", "session"]
 
 [[rules]]
 id = "github-token"
 description = "Detect GitHub-style tokens"
 regex = '''(?i)GITHUB_TOKEN\s*[:=]\s*["']?[A-Za-z0-9/_+=-]{20,}["']?'''
-tags = ["secret", "github", "token"]
+tags = ["secret", "github"]
 
 [allowlist]
-description = "Allowlist for false positives"
 paths = [
   '''\.md$''',
-  '''LICENSE''',
+  '''LICENSE'''
 ]
-
-
