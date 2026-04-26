@@ -36,14 +36,18 @@ jobs:
       - name: Run Gitleaks with custom config
         run: |
           echo "Running Gitleaks..."
+          set +e
           gitleaks detect \
             --source "${GITHUB_WORKSPACE}" \
             --log-opts="--all" \
             --config "${GITHUB_WORKSPACE}/.gitleaks.toml" \
             --report-format json \
             --report-path "${GITHUB_WORKSPACE}/gitleaks-report.json" \
-            --redact || true
+            --redact
+          EXIT_CODE=$?
+          echo "Gitleaks exit code: $EXIT_CODE"
           echo "Gitleaks finished."
+          exit 0
 
       - name: Upload Gitleaks Findings Artefact
         if: always()
@@ -56,7 +60,7 @@ jobs:
         if: always()
         run: |
           if [ ! -f gitleaks-report.json ]; then
-            echo "ERROR: gitleaks-report.json not found. Gitleaks did not run."
+            echo "ERROR: gitleaks-report.json not found. Gitleaks crashed before writing output."
             exit 1
           fi
 
