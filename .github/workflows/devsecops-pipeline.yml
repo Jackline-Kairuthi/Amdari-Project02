@@ -23,6 +23,7 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
           persist-credentials: false
+          clean: true
 
       - name: Run Gitleaks with custom rules
         uses: gitleaks/gitleaks-action@v2
