@@ -25,53 +25,89 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Gitleaks + jq
+      - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y jq wget
-          wget -q https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -O gitleaks-linux-amd64
-          chmod +x gitleaks-linux-amd64
-          sudo mv gitleaks-linux-amd64 /usr/local/bin/gitleaks
+          sudo apt-get install -y jq wget ca-certificates
+
+      - name: Install Gitleaks binary (robust)
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks-temp
+          chmod +x gitleaks-temp
+          sudo mv gitleaks-temp /usr/local/bin/gitleaks
+          echo "Installed gitleaks at $(which gitleaks)"
           gitleaks version || true
 
-      - name: Run Gitleaks with custom config (always continue)
+      - name: Debug workspace before run
         run: |
-          echo "Running Gitleaks..."
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          pwd
+          echo "Root listing:"
+          ls -la
+          echo ".github listing:"
+          ls -la .github || true
+          echo "Show head of .gitleaks.toml"
+          sed -n '1,200p' "${GITHUB_WORKSPACE}/.gitleaks.toml" || true
+
+      - name: Run Gitleaks (capture stdout/stderr, always continue)
+        run: |
           set +e
-          gitleaks detect \
+          OUT="${GITHUB_WORKSPACE}/gitleaks-out.log"
+          ERR="${GITHUB_WORKSPACE}/gitleaks-err.log"
+          REPORT="${GITHUB_WORKSPACE}/gitleaks-report.json"
+          echo "Running gitleaks; stdout->${OUT} stderr->${ERR} report->${REPORT}"
+          /usr/local/bin/gitleaks detect \
             --source "${GITHUB_WORKSPACE}" \
             --log-opts="--all" \
             --config "${GITHUB_WORKSPACE}/.gitleaks.toml" \
             --report-format json \
-            --report-path "${GITHUB_WORKSPACE}/gitleaks-report.json" \
-            --redact
+            --report-path "${REPORT}" \
+            --redact --verbose > "${OUT}" 2> "${ERR}"
           EXIT_CODE=$?
           echo "Gitleaks exit code: $EXIT_CODE"
-          echo "Gitleaks finished."
-          # do not fail this step here; next step will validate output
+          echo "=== STDOUT (first 200 lines) ==="
+          sed -n '1,200p' "${OUT}" || true
+          echo "=== STDERR (first 200 lines) ==="
+          sed -n '1,200p' "${ERR}" || true
+          # do not fail here; next step will validate the report
           exit 0
 
-      - name: Upload Gitleaks Findings Artefact
+      - name: Show workspace after run
+        run: |
+          echo "Workspace listing after gitleaks:"
+          ls -la "${GITHUB_WORKSPACE}" || true
+          echo "Show report file if present:"
+          ls -la "${GITHUB_WORKSPACE}/gitleaks-report.json" || true
+          echo "Show captured logs (short):"
+          sed -n '1,200p' "${GITHUB_WORKSPACE}/gitleaks-out.log" || true
+          sed -n '1,200p' "${GITHUB_WORKSPACE}/gitleaks-err.log" || true
+
+      - name: Upload Gitleaks Findings Artefact (logs + report)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-findings
-          path: gitleaks-report.json
+          path: |
+            gitleaks-report.json
+            gitleaks-out.log
+            gitleaks-err.log
 
       - name: Hard-fail on any Gitleaks finding or missing report
         if: always()
         run: |
-          if [ ! -f gitleaks-report.json ]; then
-            echo "ERROR: gitleaks-report.json not found. Gitleaks did not produce output or crashed."
+          REPORT="${GITHUB_WORKSPACE}/gitleaks-report.json"
+          if [ ! -f "${REPORT}" ]; then
+            echo "ERROR: ${REPORT} not found. Gitleaks did not produce output or crashed."
+            echo "Check gitleaks-err.log and gitleaks-out.log artifacts for details."
             exit 1
           fi
 
-          count=$(jq 'if type=="array" then length elif has("leaks") then .leaks|length else 0 end' gitleaks-report.json || echo 0)
+          count=$(jq 'if type=="array" then length elif has("leaks") then .leaks|length else 0 end' "${REPORT}" || echo 0)
           echo "Gitleaks findings count: $count"
 
           if [ "$count" -gt 0 ]; then
             echo "Gitleaks detected secrets. Failing job."
-            jq '.' gitleaks-report.json || true
+            jq '.' "${REPORT}" || true
             exit 1
           else
             echo "No leaks found by Gitleaks."
@@ -121,7 +157,6 @@ jobs:
         run: |
           status="${{ steps.gate.outputs.quality-gate-status }}"
           echo "Quality Gate status: $status"
-
           if [ "$status" = "ERROR" ]; then
             echo "CRITICAL/BLOCKER issues detected. Failing pipeline."
             exit 1
