@@ -4,75 +4,86 @@ name: DevSecOps Pipeline
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
   hello-world:
+    name: Hello World
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Hello World from DevSecOps Pipeline!"
+      - name: Print Hello World
+        run: echo "Hello World from DevSecOps Pipeline!"
 
   gitleaks-scan:
+    name: Gitleaks Full History Scan
     runs-on: ubuntu-latest
     needs: hello-world
     steps:
-      - uses: actions/checkout@v4
-        with: fetch-depth: 0
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Install deps and Gitleaks
+      - name: Install Gitleaks + jq
         run: |
           sudo apt-get update -y
           sudo apt-get install -y jq wget
-          wget -qO /tmp/gitleaks https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64
-          chmod +x /tmp/gitleaks
-          sudo mv /tmp/gitleaks /usr/local/bin/gitleaks
+          wget -q https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -O gitleaks-linux-amd64
+          chmod +x gitleaks-linux-amd64
+          sudo mv gitleaks-linux-amd64 /usr/local/bin/gitleaks
           gitleaks version || true
 
-      - name: Ensure config exists
+      - name: Run Gitleaks with custom config (always continue)
         run: |
-          if [ ! -f "${GITHUB_WORKSPACE}/.gitleaks.toml" ]; then
-            echo "Missing .gitleaks.toml"; exit 1
-          fi
-
-      - name: Run Gitleaks (full history) and produce JSON
-        run: |
-          set -o pipefail
-          /usr/local/bin/gitleaks detect \
+          echo "Running Gitleaks..."
+          set +e
+          gitleaks detect \
             --source "${GITHUB_WORKSPACE}" \
             --log-opts="--all" \
             --config "${GITHUB_WORKSPACE}/.gitleaks.toml" \
             --report-format json \
             --report-path "${GITHUB_WORKSPACE}/gitleaks-report.json" \
             --redact
-          echo "GITLEAKS_EXIT=$?" > gitleaks-exit.txt
+          EXIT_CODE=$?
+          echo "Gitleaks exit code: $EXIT_CODE"
+          echo "Gitleaks finished."
+          # do not fail this step here; next step will validate output
+          exit 0
 
-      - name: Upload Gitleaks artefacts
+      - name: Upload Gitleaks Findings Artefact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-findings
-          path: |
-            gitleaks-report.json
-            gitleaks-exit.txt
+          path: gitleaks-report.json
 
-      - name: Fail on any Gitleaks finding
+      - name: Hard-fail on any Gitleaks finding or missing report
         if: always()
         run: |
           if [ ! -f gitleaks-report.json ]; then
-            echo "gitleaks-report.json missing"; exit 1
-          fi
-          count=$(jq 'if type=="array" then length elif has("leaks") then .leaks|length else 0 end' gitleaks-report.json 2>/dev/null || echo 0)
-          echo "Gitleaks findings: $count"
-          if [ "$count" -gt 0 ]; then
-            jq '.' gitleaks-report.json || true
+            echo "ERROR: gitleaks-report.json not found. Gitleaks did not produce output or crashed."
             exit 1
           fi
 
+          count=$(jq 'if type=="array" then length elif has("leaks") then .leaks|length else 0 end' gitleaks-report.json || echo 0)
+          echo "Gitleaks findings count: $count"
+
+          if [ "$count" -gt 0 ]; then
+            echo "Gitleaks detected secrets. Failing job."
+            jq '.' gitleaks-report.json || true
+            exit 1
+          else
+            echo "No leaks found by Gitleaks."
+          fi
+
   sonar-scan:
+    name: SonarCloud Scan
     runs-on: ubuntu-latest
     needs: gitleaks-scan
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v2
@@ -82,19 +93,8 @@ jobs:
           SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
           SONAR_ORGANIZATION: ${{ secrets.SONAR_ORGANIZATION }}
 
-      - name: Download Sonar Issues JSON
-        run: |
-          curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
-            "${{ secrets.SONAR_HOST_URL }}/api/issues/search?componentKeys=${{ secrets.SONAR_PROJECT_KEY }}&ps=500" \
-            -o sonar-findings.json || true
-
-      - name: Upload Sonar Findings Artefact
-        uses: actions/upload-artifact@v4
-        with:
-          name: sonar-findings
-          path: sonar-findings.json
-
   quality-gate:
+    name: Sonar Quality Gate
     runs-on: ubuntu-latest
     needs: sonar-scan
     steps:
@@ -105,12 +105,27 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      - name: Gate decision (CRITICAL/BLOCKER only)
+      - name: Download Sonar Issues JSON
+        run: |
+          curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+            "${{ secrets.SONAR_HOST_URL }}/api/issues/search?componentKeys=${{ secrets.SONAR_PROJECT_KEY }}" \
+            -o sonar-findings.json || true
+
+      - name: Upload Sonar Findings Artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sonar-findings
+          path: sonar-findings.json
+
+      - name: Hard-fail only on CRITICAL/BLOCKER
         run: |
           status="${{ steps.gate.outputs.quality-gate-status }}"
           echo "Quality Gate status: $status"
+
           if [ "$status" = "ERROR" ]; then
-            echo "Failing on CRITICAL/BLOCKER"
+            echo "CRITICAL/BLOCKER issues detected. Failing pipeline."
             exit 1
-          fi
-          echo "Non-CRITICAL issues allowed; passing."
+          else
+            echo "No CRITICAL/BLOCKER issues. Passing pipeline."
+            exit 0
+
