@@ -27,14 +27,15 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y jq wget ca-certificates
+          sudo apt-get install -y jq wget ca-certificates tar
 
-      - name: Install Gitleaks binary
+      - name: Install Gitleaks (correct tar.gz method)
         run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64.tar.gz -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz
           chmod +x gitleaks
           sudo mv gitleaks /usr/local/bin/gitleaks
-          gitleaks version || true
+          gitleaks version
 
       - name: Run Gitleaks (always continue)
         run: |
@@ -85,7 +86,6 @@ jobs:
   sonar-scan:
     name: SonarCloud Scan
     runs-on: ubuntu-latest
-    # IMPORTANT: Sonar must run even if Gitleaks fails
     if: always()
     steps:
       - name: Checkout code
