@@ -200,3 +200,41 @@ jobs:
           name: trivy-k8s-findings
           path: trivy-k8s-report.json
 
+  checkov-scan:
+    name: Checkov IaC Scan (IV-08 to IV-10)
+    runs-on: ubuntu-latest
+    needs: trivy-k8s-scan
+    if: always()
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install Checkov
+      run: |
+        pip install checkov
+
+    - name: Run Checkov on Terraform
+      run: |
+        checkov -d infra/terraform/ -o json > checkov-report.json || true
+
+    - name: Upload Checkov Findings
+      uses: actions/upload-artifact@v4
+      with:
+        name: checkov-findings
+        path: checkov-report.json
+
+    - name: Hard-fail on HIGH/CRITICAL IaC issues
+      run: |
+        HIGH=$(jq '[.results.failed_checks[] | select(.severity=="HIGH")] | length' checkov-report.json)
+        CRIT=$(jq '[.results.failed_checks[] | select(.severity=="CRITICAL")] | length' checkov-report.json)
+
+        echo "HIGH: $HIGH"
+        echo "CRITICAL: $CRIT"
+
+        if [ "$HIGH" -gt 0 ] || [ "$CRIT" -gt 0 ]; then
+          echo "IaC misconfigurations detected — failing Stage 5"
+          exit 1
+        fi
+
+        echo "No HIGH/CRITICAL IaC issues"
+
