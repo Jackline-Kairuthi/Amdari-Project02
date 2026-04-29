@@ -1,0 +1,15 @@
+AZ3K9G3VeoPjfIBUFX2X,kubernetes:S6596,MAJOR,jackline-kairuthi:infra/kubernetes/base/auth-service.yaml,20,"Use a specific version tag for the image instead of ""latest""."
+AZ3K9G3KeoPjfIBUFX2U,kubernetes:S6596,MAJOR,jackline-kairuthi:infra/kubernetes/base/frontend.yaml,18,"Use a specific version tag for the image instead of ""latest""."
+AZ3K9G3eeoPjfIBUFX2a,kubernetes:S6596,MAJOR,jackline-kairuthi:infra/kubernetes/base/transaction-service.yaml,18,"Use a specific version tag for the image instead of ""latest""."
+AZ3K9G2heoPjfIBUFX2F,terraform:S6321,MINOR,jackline-kairuthi:infra/terraform/modules/vpc/main.tf,60,Restrict IP addresses authorized to access administration services.
+AZ3K9G1PeoPjfIBUFX1q,python:S2068,MAJOR,jackline-kairuthi:services/auth-service/app.py,22,"""password"" detected here, review this potentially hard-coded credential."
+AZ3K9G1QeoPjfIBUFX1s,python:S6965,MAJOR,jackline-kairuthi:services/auth-service/app.py,35,Specify the HTTP methods this route should accept.
+AZ3K9G1QeoPjfIBUFX1u,python:S8392,BLOCKER,jackline-kairuthi:services/auth-service/app.py,162,Avoid binding the application to all network interfaces.
+AZ3K9G1teoPjfIBUFX10,python:S6965,MAJOR,jackline-kairuthi:services/frontend/app.py,75,Specify the HTTP methods this route should accept.
+AZ3K9G1teoPjfIBUFX13,python:S6965,MAJOR,jackline-kairuthi:services/frontend/app.py,129,Specify the HTTP methods this route should accept.
+AZ3K9G1teoPjfIBUFX14,python:S6965,MAJOR,jackline-kairuthi:services/frontend/app.py,173,Specify the HTTP methods this route should accept.
+AZ3K9G1teoPjfIBUFX15,python:S6965,MAJOR,jackline-kairuthi:services/frontend/app.py,179,Specify the HTTP methods this route should accept.
+AZ3K9G1teoPjfIBUFX16,python:S8392,BLOCKER,jackline-kairuthi:services/frontend/app.py,185,Avoid binding the application to all network interfaces.
+AZ3K9G2DeoPjfIBUFX1_,python:S2068,MAJOR,jackline-kairuthi:services/transaction-service/app.py,19,"""password"" detected here, review this potentially hard-coded credential."
+AZ3K9G2DeoPjfIBUFX2A,python:S6965,MAJOR,jackline-kairuthi:services/transaction-service/app.py,47,Specify the HTTP methods this route should accept.
+AZ3K9G2DeoPjfIBUFX2B,python:S8392,BLOCKER,jackline-kairuthi:services/transaction-service/app.py,201,Avoid binding the application to all network interfaces.
