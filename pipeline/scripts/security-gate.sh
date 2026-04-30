@@ -3,7 +3,6 @@ set -e
 
 echo "=== Security Gate Starting ==="
 
-# Folder containing scanner outputs
 SCAN_DIR="$1"
 
 if [ -z "$SCAN_DIR" ]; then
@@ -11,35 +10,40 @@ if [ -z "$SCAN_DIR" ]; then
   exit 1
 fi
 
-# Arrays to store findings
 DEVSECOPS_FINDINGS=()
 APPSEC_FINDINGS=()
-
 BLOCK=false
 
-# Helper: read JSON safely
-parse_json() {
-  jq -c '.[]' "$1" 2>/dev/null || true
+# SAFE JSON PARSER
+safe_parse() {
+  jq -c '
+    if type=="array" then
+      .[]
+    elif type=="object" then
+      .
+    else
+      empty
+    end
+  ' "$1" 2>/dev/null || true
 }
 
-# Loop through all JSON files
 for file in "$SCAN_DIR"/*.json; do
   scanner=$(basename "$file" | cut -d'-' -f1)
 
   echo "Processing $file (scanner: $scanner)"
 
-  # Extract each finding
   while IFS= read -r finding; do
-    severity=$(echo "$finding" | jq -r '.severity')
-    id=$(echo "$finding" | jq -r '.id')
-    file_path=$(echo "$finding" | jq -r '.file')
-    line=$(echo "$finding" | jq -r '.line')
+    severity=$(echo "$finding" | jq -r '.severity // empty')
+    id=$(echo "$finding" | jq -r '.id // empty')
+    file_path=$(echo "$finding" | jq -r '.file // empty')
+    line=$(echo "$finding" | jq -r '.line // empty')
 
-    # Classify by owner
+    # Skip entries with no severity
+    [[ -z "$severity" ]] && continue
+
     if [[ "$scanner" == "secret" || "$scanner" == "image" || "$scanner" == "iac" ]]; then
       DEVSECOPS_FINDINGS+=("$severity|$scanner|$id|$file_path|$line")
 
-      # DevSecOps CRITICAL = block
       if [[ "$severity" == "CRITICAL" ]]; then
         BLOCK=true
       fi
@@ -47,13 +51,12 @@ for file in "$SCAN_DIR"/*.json; do
     elif [[ "$scanner" == "sast" ]]; then
       APPSEC_FINDINGS+=("$severity|$scanner|$id|$file_path|$line")
 
-      # AppSec CRITICAL blocks only in prod
       if [[ "$severity" == "CRITICAL" && "$ENVIRONMENT" == "production" ]]; then
         BLOCK=true
       fi
     fi
 
-  done < <(parse_json "$file")
+  done < <(safe_parse "$file")
 
 done
 
@@ -94,13 +97,10 @@ COMMENT_FILE="security-gate-comment.md"
 } > "$COMMENT_FILE"
 
 echo "=== Posting PR Comment ==="
-
-# Post or update PR comment
 gh pr comment "$PR_NUMBER" --body-file "$COMMENT_FILE" || true
 
 echo "=== Security Gate Finished ==="
 
-# Exit based on BLOCK flag
 if $BLOCK; then
   exit 1
 else
