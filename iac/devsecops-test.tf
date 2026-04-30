@@ -1,6 +1,3 @@
-#DevSecOps CRITICAL (Checkov IaC)
-#Purpose: Validate that insecure IaC blocks the merge request
-
 resource "aws_security_group" "bad_sg" {
   name        = "bad_sg"
   ingress {
