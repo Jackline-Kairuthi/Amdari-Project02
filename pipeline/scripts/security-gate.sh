@@ -41,6 +41,7 @@ for file in "$SCAN_DIR"/*.json; do
     # Skip entries with no severity
     [[ -z "$severity" ]] && continue
 
+    # DevSecOps-owned scanners
     if [[ "$scanner" == "secret" || "$scanner" == "image" || "$scanner" == "iac" ]]; then
       DEVSECOPS_FINDINGS+=("$severity|$scanner|$id|$file_path|$line")
 
@@ -48,6 +49,7 @@ for file in "$SCAN_DIR"/*.json; do
         BLOCK=true
       fi
 
+    # AppSec-owned scanner
     elif [[ "$scanner" == "sast" ]]; then
       APPSEC_FINDINGS+=("$severity|$scanner|$id|$file_path|$line")
 
@@ -69,30 +71,43 @@ COMMENT_FILE="security-gate-comment.md"
   echo "## 🔐 Security Gate Summary"
 
   if $BLOCK; then
-    echo "**❌ Merge Blocked** — CRITICAL findings detected."
+    echo "**❌ Merge Blocked** — CRITICAL DevSecOps findings detected."
   else
-    echo "**✅ Merge Allowed** — No blocking findings."
+    echo "**✅ Merge Allowed** — No blocking DevSecOps findings."
   fi
 
   echo ""
-  echo "### DevSecOps Findings (Blocking when CRITICAL)"
+  echo "## 🛡️ DevSecOps-Owned Findings"
+  echo "Blocking when **CRITICAL** (Secrets, Image Scan, IaC Scan)"
+  echo ""
   echo "| Severity | Scanner | ID | File | Line |"
   echo "|---------|---------|----|------|------|"
 
-  for f in "${DEVSECOPS_FINDINGS[@]}"; do
-    IFS='|' read -r sev sc id fp ln <<< "$f"
-    echo "| $sev | $sc-scan | $id | $fp | $ln |"
-  done
+  if [ ${#DEVSECOPS_FINDINGS[@]} -eq 0 ]; then
+    echo "| None | - | - | - | - |"
+  else
+    for f in "${DEVSECOPS_FINDINGS[@]}"; do
+      IFS='|' read -r sev sc id fp ln <<< "$f"
+      echo "| $sev | $sc-scan | $id | $fp | $ln |"
+    done
+  fi
 
   echo ""
-  echo "### AppSec Findings (Non-blocking)"
+  echo "## 🧩 AppSec-Owned Findings"
+  echo "Non-blocking — escalate to AppSec via the intake form:"
+  echo "**https://your-company-appsec-intake-form.example.com**"
+  echo ""
   echo "| Severity | Scanner | ID | File | Line |"
   echo "|---------|---------|----|------|------|"
 
-  for f in "${APPSEC_FINDINGS[@]}"; do
-    IFS='|' read -r sev sc id fp ln <<< "$f"
-    echo "| $sev | $sc-scan | $id | $fp | $ln |"
-  done
+  if [ ${#APPSEC_FINDINGS[@]} -eq 0 ]; then
+    echo "| None | - | - | - | - |"
+  else
+    for f in "${APPSEC_FINDINGS[@]}"; do
+      IFS='|' read -r sev sc id fp ln <<< "$f"
+      echo "| $sev | $sc-scan | $id | $fp | $ln |"
+    done
+  fi
 
 } > "$COMMENT_FILE"
 
@@ -106,3 +121,4 @@ if $BLOCK; then
 else
   exit 0
 fi
+
