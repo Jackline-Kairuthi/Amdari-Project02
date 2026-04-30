@@ -1,8 +1,3 @@
-import sqlite3
+API_KEY = "AKIA1234567890SECRET"
 
-user_input = input("Enter ID: ")
-query = "SELECT * FROM users WHERE id = " + user_input
-conn = sqlite3.connect("test.db")
-cursor = conn.cursor()
-cursor.execute(query)
 
