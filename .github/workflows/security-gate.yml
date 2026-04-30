@@ -24,10 +24,17 @@ jobs:
 
       - name: Run Gitleaks
         run: |
+          echo "Running Gitleaks..."
           gitleaks detect \
             --source . \
             --report-format json \
             --report-path secret-scan.json || true
+
+          echo "Listing workspace files:"
+          ls -al
+
+          echo "Checking if secret-scan.json exists:"
+          test -f secret-scan.json && echo "FOUND" || echo "NOT FOUND"
 
       - name: Upload secret-scan results
         uses: actions/upload-artifact@v4
