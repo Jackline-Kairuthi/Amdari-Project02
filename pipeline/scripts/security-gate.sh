@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 set -e
 
@@ -121,4 +122,5 @@ if $BLOCK; then
 else
   exit 0
 fi
+
 
