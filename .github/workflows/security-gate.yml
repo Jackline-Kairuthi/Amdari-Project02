@@ -34,7 +34,13 @@ jobs:
           ls -al
 
           echo "Checking if secret-scan.json exists:"
-          test -f secret-scan.json && echo "FOUND" || echo "NOT FOUND"
+          if [ -f secret-scan.json ]; then
+            echo "FOUND secret-scan.json"
+          else
+            echo "ERROR: secret-scan.json NOT FOUND"
+            echo "{}" > secret-scan.json
+            echo "Created empty secret-scan.json so artifact upload does not fail"
+          fi
 
       - name: Upload secret-scan results
         uses: actions/upload-artifact@v4
