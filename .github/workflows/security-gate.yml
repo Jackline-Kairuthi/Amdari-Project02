@@ -24,22 +24,13 @@ jobs:
 
       - name: Run Gitleaks
         run: |
-          echo "Running Gitleaks..."
           gitleaks detect \
             --source . \
             --report-format json \
             --report-path secret-scan.json || true
 
-          echo "Listing workspace files:"
-          ls -al
-
-          echo "Checking if secret-scan.json exists:"
-          if [ -f secret-scan.json ]; then
-            echo "FOUND secret-scan.json"
-          else
-            echo "ERROR: secret-scan.json NOT FOUND"
+          if [ ! -f secret-scan.json ]; then
             echo "{}" > secret-scan.json
-            echo "Created empty secret-scan.json so artifact upload does not fail"
           fi
 
       - name: Upload secret-scan results
@@ -108,15 +99,28 @@ jobs:
   # ---------------------------------------------------------
   iac-scan:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
       - name: Install Checkov
         run: pip install checkov
 
-      - name: Run Checkov
+      - name: Run Checkov (Terraform IaC)
         run: |
-          checkov -d . -o json > iac-scan.json || echo "Checkov completed"
+          checkov -d iac -o json > iac-scan.json
+
+      - name: Ensure iac-scan.json exists
+        run: |
+          if [ ! -f iac-scan.json ]; then
+            echo "{}" > iac-scan.json
+          fi
 
       - name: Upload iac-scan results
         uses: actions/upload-artifact@v4
