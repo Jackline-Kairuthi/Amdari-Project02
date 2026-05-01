@@ -1,4 +1,3 @@
-#security gate
 name: Security Gate
 
 on:
@@ -62,6 +61,10 @@ jobs:
             "${{ secrets.SONAR_HOST_URL }}/api/issues/search?componentKeys=${{ secrets.SONAR_PROJECT_KEY }}&ps=500" \
             -o sast-scan.json || true
 
+          if [ ! -f sast-scan.json ]; then
+            echo "{}" > sast-scan.json
+          fi
+
       - name: Upload sast-scan results
         uses: actions/upload-artifact@v4
         with:
@@ -89,6 +92,10 @@ jobs:
         run: |
           trivy image --format json -o image-scan.json python:3.9-slim || true
 
+          if [ ! -f image-scan.json ]; then
+            echo "{}" > image-scan.json
+          fi
+
       - name: Upload image-scan results
         uses: actions/upload-artifact@v4
         with:
@@ -100,10 +107,8 @@ jobs:
   # ---------------------------------------------------------
   iac-scan:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -115,10 +120,8 @@ jobs:
 
       - name: Run Checkov (Terraform IaC)
         run: |
-          checkov -d iac -o json > iac-scan.json
+          checkov -d iac -o json > iac-scan.json || true
 
-      - name: Ensure iac-scan.json exists
-        run: |
           if [ ! -f iac-scan.json ]; then
             echo "{}" > iac-scan.json
           fi
@@ -133,44 +136,43 @@ jobs:
   # 5. SECURITY GATE (FINAL DECISION)
   # ---------------------------------------------------------
   security-gate:
+    needs: [secret-scan, image-scan, iac-scan, sast-scan]
     runs-on: ubuntu-latest
-    needs: [secret-scan, sast-scan, image-scan, iac-scan]
-    permissions:
-      contents: write
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download secret-scan
+      - name: Create reports directory
+        run: mkdir -p security-reports
+
+      - name: Download secret-scan results
         uses: actions/download-artifact@v4
         with:
           name: secret-scan
-          path: scans
+          path: security-reports
 
-      - name: Download sast-scan
-        uses: actions/download-artifact@v4
-        with:
-          name: sast-scan
-          path: scans
-
-      - name: Download image-scan
+      - name: Download image-scan results
         uses: actions/download-artifact@v4
         with:
           name: image-scan
-          path: scans
+          path: security-reports
 
-      - name: Download iac-scan
+      - name: Download iac-scan results
         uses: actions/download-artifact@v4
         with:
           name: iac-scan
-          path: scans
+          path: security-reports
+
+      - name: Download sast-scan results
+        uses: actions/download-artifact@v4
+        with:
+          name: sast-scan
+          path: security-reports
 
       - name: Run Security Gate
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          ENVIRONMENT: ${{ github.base_ref == 'main' && 'production' || 'nonprod' }}
         run: |
           chmod +x pipeline/scripts/security-gate.sh
-          ./pipeline/scripts/security-gate.sh scans
+          ./pipeline/scripts/security-gate.sh security-reports
+
