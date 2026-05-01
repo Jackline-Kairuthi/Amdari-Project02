@@ -20,15 +20,17 @@ jobs:
         id: pr
         run: echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
 
-      - name: Update exception file
+      - name: Validate exception file exists
         run: |
           FILE=".security-exceptions/exception-${{ steps.pr.outputs.pr_number }}.json"
-
           if [ ! -f "$FILE" ]; then
-            echo "No exception file found for this PR"
+            echo "❌ No exception request found for this PR."
             exit 1
           fi
 
+      - name: Approve exception
+        run: |
+          FILE=".security-exceptions/exception-${{ steps.pr.outputs.pr_number }}.json"
           jq '.status = "APPROVED"' "$FILE" > tmp.json && mv tmp.json "$FILE"
 
       - name: Commit approval
