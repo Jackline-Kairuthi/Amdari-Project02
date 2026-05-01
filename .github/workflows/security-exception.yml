@@ -58,6 +58,6 @@ jobs:
             **Status:** PENDING  
             **Requested by:** @${{ github.event.comment.user.login }}  
             **Reason:** \`${{ steps.extract.outputs.reason }}\`  
+            
             AppSec must update the exception file to **APPROVED** or **DENIED**."
-
 
