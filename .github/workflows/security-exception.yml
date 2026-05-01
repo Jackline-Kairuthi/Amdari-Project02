@@ -1,0 +1,69 @@
+name: Security Exception Request
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  handle-exception:
+    if: contains(github.event.comment.body, '/security-exception')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract PR number
+        id: pr
+        run: |
+          # Extract PR number from the comment event
+          echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+
+      - name: Extract exception reason
+        id: extract
+        run: |
+          BODY="${{ github.event.comment.body }}"
+          REASON=$(echo "$BODY" | sed -n 's/.*reason="\([^"]*\)".*/\1/p')
+
+          if [ -z "$REASON" ]; then
+            REASON="No reason provided"
+          fi
+
+          echo "reason=$REASON" >> $GITHUB_OUTPUT
+
+      - name: Create exception directory
+        run: mkdir -p .security-exceptions
+
+      - name: Create exception request file
+        run: |
+          cat <<EOF > .security-exceptions/exception-${{ steps.pr.outputs.pr_number }}.json
+          {
+            "pr": "${{ steps.pr.outputs.pr_number }}",
+            "requested_by": "${{ github.event.comment.user.login }}",
+            "reason": "${{ steps.extract.outputs.reason }}",
+            "status": "PENDING",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          }
+          EOF
+
+      - name: Commit exception request
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .security-exceptions/
+          git commit -m "Security exception requested for PR #${{ steps.pr.outputs.pr_number }}"
+          git push
+
+      - name: Notify PR
+        run: |
+          gh pr comment ${{ steps.pr.outputs.pr_number }} \
+            --body "📌 **Security Exception Requested**  
+            **Status:** PENDING  
+            **Requested by:** @${{ github.event.comment.user.login }}  
+            **Reason:** \`${{ steps.extract.outputs.reason }}\`  
+            
+            AppSec must update the exception file to **APPROVED** or **DENIED**."
