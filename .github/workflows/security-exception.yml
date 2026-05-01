@@ -14,31 +14,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Extract PR number
         id: pr
-        run: |
-          # Extract PR number from the comment event
-          echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+        run: echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
 
-      - name: Extract exception reason
+      - name: Extract reason
         id: extract
         run: |
           BODY="${{ github.event.comment.body }}"
           REASON=$(echo "$BODY" | sed -n 's/.*reason="\([^"]*\)".*/\1/p')
-
-          if [ -z "$REASON" ]; then
-            REASON="No reason provided"
-          fi
-
+          [ -z "$REASON" ] && REASON="No reason provided"
           echo "reason=$REASON" >> $GITHUB_OUTPUT
 
       - name: Create exception directory
         run: mkdir -p .security-exceptions
 
-      - name: Create exception request file
+      - name: Create exception file
         run: |
           cat <<EOF > .security-exceptions/exception-${{ steps.pr.outputs.pr_number }}.json
           {
@@ -50,7 +43,7 @@ jobs:
           }
           EOF
 
-      - name: Commit exception request
+      - name: Commit exception file
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
@@ -65,5 +58,6 @@ jobs:
             **Status:** PENDING  
             **Requested by:** @${{ github.event.comment.user.login }}  
             **Reason:** \`${{ steps.extract.outputs.reason }}\`  
-            
             AppSec must update the exception file to **APPROVED** or **DENIED**."
+
+
