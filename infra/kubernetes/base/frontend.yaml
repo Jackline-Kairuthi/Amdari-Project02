@@ -12,20 +12,50 @@ spec:
     metadata:
       labels:
         svc: frontend
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "frontend-role"
+        vault.hashicorp.com/agent-inject-secret-frontend: "secureflow/frontend"
+        vault.hashicorp.com/agent-inject-template-frontend: |
+          {{- with secret "secureflow/frontend" -}}
+          export SESSION_SECRET="{{ .Data.data.SESSION_SECRET }}"
+          export AUTH_SERVICE_URL="{{ .Data.data.AUTH_SERVICE_URL }}"
+          export TRANSACTION_SERVICE_URL="{{ .Data.data.TRANSACTION_SERVICE_URL }}"
+          {{- end }}
     spec:
+      serviceAccountName: frontend-sa
       containers:
         - name: frontend
-          image: secureflow/frontend:latest   # CK-06
+          image: jkairuthi/frontend:py312
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
+
+          # -----------------------------
+          # HEALTH PROBES (NEW)
+          # -----------------------------
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
           envFrom:
             - configMapRef:
                 name: secureflow-config
+
           securityContext:
-            privileged: true                # CK-04
-            allowPrivilegeEscalation: true  # CK-04
-            runAsUser: 0                    # CK-02
-          # CK-05 — no resources.
+            privileged: true
+            allowPrivilegeEscalation: true
+            runAsUser: 0
 ---
 apiVersion: v1
 kind: Service

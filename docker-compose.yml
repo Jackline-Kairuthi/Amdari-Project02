@@ -11,11 +11,11 @@ version: "3.8"
 
 services:
   auth-db:
-    image: postgres:14
+    image: postgres@sha256:bbb8851608e3ff4901156bf6a4bf90735a9d44ae014c03811bfdb2f9c354b18b
     environment:
       POSTGRES_DB: authdb
       POSTGRES_USER: authuser
-      POSTGRES_PASSWORD: authpass123
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:?err}
     ports:
       - "5432:5432"          # IV-02 — exposed on host.
     volumes:
@@ -23,11 +23,11 @@ services:
       - auth-db-data:/var/lib/postgresql/data
 
   transaction-db:
-    image: postgres:14
+    image: postgres@sha256:bbb8851608e3ff4901156bf6a4bf90735a9d44ae014c03811bfdb2f9c354b18b
     environment:
       POSTGRES_DB: transactiondb
       POSTGRES_USER: txuser
-      POSTGRES_PASSWORD: txpass123
+      POSTGRES_PASSWORD: ${Transaction_DB_PASSWORD:?err}
     ports:
       - "5433:5432"          # IV-02 — exposed on host.
     volumes:
@@ -41,8 +41,8 @@ services:
       DB_PORT: 5432
       DB_NAME: authdb
       DB_USER: authuser
-      DB_PASSWORD: authpass123        # IV-01, IV-03
-      JWT_SECRET: super-secret-key-123 # AV-07, IV-03
+      DB_PASSWORD: ${AUTH_DB_PASSWORD:?err}        # IV-01, IV-03
+      JWT_SECRET: ${JWT_SECRET:?err} # AV-07, IV-03
     ports:
       - "5001:5001"
     depends_on:
@@ -55,7 +55,7 @@ services:
       DB_PORT: 5432
       DB_NAME: transactiondb
       DB_USER: txuser
-      DB_PASSWORD: txpass123           # IV-01, IV-03
+      DB_PASSWORD: ${Transaction_DB_PASSWORD:?err}           # IV-01, IV-03
       AUTH_SERVICE_URL: http://auth-service:5001
     ports:
       - "5002:5002"
@@ -66,7 +66,7 @@ services:
   frontend:
     build: ./services/frontend
     environment:
-      SESSION_SECRET: changeme           # FV-03, IV-03
+      SESSION_SECRET: ${SESSION_SECRET:?err}           # FV-03, IV-03
       AUTH_SERVICE_URL: http://auth-service:5001
       TRANSACTION_SERVICE_URL: http://transaction-service:5002
     ports:
@@ -82,6 +82,6 @@ volumes:
 # IV-06 — no `deploy.resources.limits` on any service.
 # IV-07 — no user-defined network isolation; everything on the default bridge.
 
-GITHUB_TOKEN=wJalrXUtnFEMI/K7MDENG/bPxRfiCYz1nPVCOm0D
+
 
 
