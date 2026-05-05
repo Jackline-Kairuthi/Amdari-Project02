@@ -15,24 +15,39 @@ spec:
       annotations:
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "auth-role"
-        vault.hashicorp.com/agent-inject-secret-auth: "secureflow/auth-service"
+
+        # Correct KV v2 path (your real secret)
+        vault.hashicorp.com/agent-inject-secret-auth: "secureflow/data/auth"
+
+        # Correct template for KV v2
         vault.hashicorp.com/agent-inject-template-auth: |
-          {{- with secret "secureflow/auth-service" -}}
-          export DB_PASSWORD="{{ .Data.data.DB_PASSWORD }}"
+          {{- with secret "secureflow/data/auth" -}}
+          export AUTH_DB_PASSWORD="{{ .Data.data.AUTH_DB_PASSWORD }}"
           export JWT_SECRET="{{ .Data.data.JWT_SECRET }}"
           {{- end }}
+
     spec:
       serviceAccountName: auth-sa
+
       containers:
         - name: auth-service
-          image: jkairuthi/auth-service:py312
+          image: jkairuthi/auth-service:py312-v2
           imagePullPolicy: Always
           ports:
             - containerPort: 5001
 
-          # ----------------------------------------
-          # HEALTH PROBES (NEW)
-          # ----------------------------------------
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Sourcing Vault secrets..."
+              for f in /vault/secrets/*; do
+                echo "Loading $f"
+                . "$f"
+              done
+
+              echo "Starting auth-service with secrets loaded"
+              exec python app.py
+
           livenessProbe:
             httpGet:
               path: /health
@@ -58,7 +73,7 @@ spec:
               value: authdb
             - name: DB_USER
               value: authuser
-            - name: DB_PASSWORD
+            - name: AUTH_DB_PASSWORD
               value: ""
             - name: JWT_SECRET
               value: ""
@@ -67,6 +82,7 @@ spec:
             privileged: true
             allowPrivilegeEscalation: true
             runAsUser: 0
+
 ---
 apiVersion: v1
 kind: Service
@@ -79,4 +95,3 @@ spec:
   ports:
     - port: 5001
       targetPort: 5001
-

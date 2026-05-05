@@ -15,13 +15,14 @@ spec:
       annotations:
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "frontend-role"
-        vault.hashicorp.com/agent-inject-secret-frontend: "secureflow/frontend"
-        vault.hashicorp.com/agent-inject-template-frontend: |
-          {{- with secret "secureflow/frontend" -}}
+
+        # Inject SESSION_SECRET from Vault
+        vault.hashicorp.com/agent-inject-secret-SESSION_SECRET: "secureflow/data/frontend"
+        vault.hashicorp.com/agent-inject-template-SESSION_SECRET: |
+          {{- with secret "secureflow/data/frontend" -}}
           export SESSION_SECRET="{{ .Data.data.SESSION_SECRET }}"
-          export AUTH_SERVICE_URL="{{ .Data.data.AUTH_SERVICE_URL }}"
-          export TRANSACTION_SERVICE_URL="{{ .Data.data.TRANSACTION_SERVICE_URL }}"
           {{- end }}
+
     spec:
       serviceAccountName: frontend-sa
       containers:
@@ -32,7 +33,7 @@ spec:
             - containerPort: 5000
 
           # -----------------------------
-          # HEALTH PROBES (NEW)
+          # HEALTH PROBES
           # -----------------------------
           livenessProbe:
             httpGet:
@@ -48,14 +49,34 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
 
+          # -----------------------------
+          # NON‑SECRET CONFIG
+          # -----------------------------
           envFrom:
             - configMapRef:
                 name: secureflow-config
 
+          # -----------------------------
+          # ENV VARS (non‑secret)
+          # -----------------------------
+          env:
+            - name: AUTH_SERVICE_URL
+              value: "http://auth-service:5001"
+            - name: TRANSACTION_SERVICE_URL
+              value: "http://transaction-service:5002"
+
+            # Secret injected by Vault
+            - name: SESSION_SECRET
+              value: ""
+
+          # -----------------------------
+          # SECURITY CONTEXT (intentionally vulnerable)
+          # -----------------------------
           securityContext:
             privileged: true
             allowPrivilegeEscalation: true
             runAsUser: 0
+
 ---
 apiVersion: v1
 kind: Service

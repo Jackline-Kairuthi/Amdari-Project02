@@ -15,12 +15,14 @@ spec:
       annotations:
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/role: "transaction-role"
-        vault.hashicorp.com/agent-inject-secret-transaction: "secureflow/transaction-service"
-        vault.hashicorp.com/agent-inject-template-transaction: |
-          {{- with secret "secureflow/transaction-service" -}}
-          export DB_PASSWORD="{{ .Data.data.DB_PASSWORD }}"
-          export AUTH_SERVICE_URL="{{ .Data.data.AUTH_SERVICE_URL }}"
+
+        # Inject TX_DB_PASSWORD from Vault
+        vault.hashicorp.com/agent-inject-secret-TX_DB_PASSWORD: "secureflow/data/transaction"
+        vault.hashicorp.com/agent-inject-template-TX_DB_PASSWORD: |
+          {{- with secret "secureflow/data/transaction" -}}
+          export TX_DB_PASSWORD="{{ .Data.data.TX_DB_PASSWORD }}"
           {{- end }}
+
     spec:
       serviceAccountName: transaction-sa
       containers:
@@ -31,7 +33,7 @@ spec:
             - containerPort: 5002
 
           # ----------------------------------------
-          # HEALTH PROBES (NEW)
+          # HEALTH PROBES
           # ----------------------------------------
           livenessProbe:
             httpGet:
@@ -47,10 +49,16 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
 
+          # ----------------------------------------
+          # CONFIGMAP (non‑secret values)
+          # ----------------------------------------
           envFrom:
             - configMapRef:
                 name: secureflow-config
 
+          # ----------------------------------------
+          # ENV VARS (non‑secret)
+          # ----------------------------------------
           env:
             - name: DB_HOST
               value: transaction-db
@@ -58,15 +66,23 @@ spec:
               value: transactiondb
             - name: DB_USER
               value: txuser
-            - name: DB_PASSWORD
-              value: ""
-            - name: AUTH_SERVICE_URL
+
+            # Secret injected by Vault
+            - name: TX_DB_PASSWORD
               value: ""
 
+            # Not a secret — safe to hardcode
+            - name: AUTH_SERVICE_URL
+              value: "http://auth-service:5001"
+
+          # ----------------------------------------
+          # SECURITY CONTEXT (intentionally vulnerable)
+          # ----------------------------------------
           securityContext:
             privileged: true
             allowPrivilegeEscalation: true
             runAsUser: 0
+
 ---
 apiVersion: v1
 kind: Service
