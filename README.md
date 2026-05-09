@@ -1,21 +1,44 @@
-# SecureFlow — Vulnerable Banking Platform
+# SecureFlow — Secured Version (DevSecOps Case Study Project)
+SecureFlow is a deliberately vulnerable banking platform used as the foundation for a full DevSecOps transformation.
+The original upstream repository is intentionally insecure and should never be deployed to a real cloud account.
+This fork contains my secured implementation, including infrastructure hardening, CI/CD security gates, secrets management, policy enforcement, runtime monitoring, and observability.
 
-> **This is an INTENTIONALLY INSECURE baseline.**
-> Do not deploy to a real cloud account. Run only in an isolated lab or local
-> Kubernetes cluster (kind, k3s, minikube).
+This project demonstrates the full lifecycle of securing an insecure microservices application using modern DevSecOps practices.
 
-This repository is the "before" state for the SecureFlow DevSecOps case study.
-Your job is to build the security pipeline, remediations, policy enforcement,
-secrets management, runtime monitoring, and observability described in the
-project brief. What you fork is broken on purpose — every vulnerability listed
-in [`VULNERABILITIES.md`](./VULNERABILITIES.md) is real and exploitable.
+<h1/> Project Overview</h1>
 
-Read the project brief PDF end-to-end before you touch any code.
+This repository represents the secured “after” state of the SecureFlow platform.
+The upstream project provides an intentionally vulnerable baseline; my work implements the complete remediation pipeline described in the project brief.
+
+Key security enhancements implemented in this fork
+- Hardened Infrastructure as Code (Terraform)
+
+- Checkov Stage 4 compliance (zero CRITICAL findings)
+
+- HashiCorp Vault for secrets management and dynamic credentials
+
+- OPA Gatekeeper for Kubernetes policy enforcement
+
+- Falco for runtime threat detection (eBPF)
+
+- Gitleaks, Trivy, Bandit, pip-audit, and OWASP ZAP integrated into CI
+
+- GitHub Actions 7‑stage security pipeline
+
+- Signed container images with SBOM attestations
+
+- Zero committed secrets
+
+- Zero CRITICAL CVEs in service images
+
+- NetworkPolicies, hardened Kustomize overlays, and secure defaults
+
+This fork is designed to be a portfolio‑ready demonstration of practical DevSecOps skills.
 
 ---
 
 ## Architecture
-
+SecureFlow is a microservices banking application consisting of:
 ```
                      ┌────────────────────┐
                      │     frontend       │  Flask + Jinja2 on :5000
@@ -36,35 +59,28 @@ Read the project brief PDF end-to-end before you touch any code.
               └────────────┘          └────────────────┘
 ```
 
-Three Python/Flask services, two independent PostgreSQL instances, microservices
-pattern. Each service has its own database so that per-service Vault policies
-(Step 14 of the brief) are meaningful — compromising one service does not grant
-access to another service's data.
+Each service has its own database to support least privilege and per‑service Vault policies.
 
 ---
 
 ## Quick Start — Docker Compose
 
+The insecure baseline can be run locally to observe vulnerabilities before remediation.
+
 ```bash
 docker-compose up --build
 
-# Services are then available at:
-#   frontend              http://localhost:5000
-#   auth-service API      http://localhost:5001
-#   transaction-service   http://localhost:5002
-#   auth-db               localhost:5432
-#   transaction-db        localhost:5433
 ```
+## Kubernetes (Base Manifests)
 
-Seed users (the password hashes are MD5 — weak on purpose, see AV-05):
+These manifests deploy because they contain no security controls.
+In the secured version, Gatekeeper will reject them.
 
-| Username | Password   | Role  |
-|----------|-----------|-------|
-| admin    | admin123  | admin |
-| alice    | alice123  | user  |
-| bob      | bob123    | user  |
+```bash
+kubectl apply -k infra/kubernetes/base
+kubectl get pods -n secureflow -w
 
----
+```
 
 ## Quick Start — Kubernetes (base manifests)
 
@@ -77,64 +93,134 @@ kubectl apply -k infra/kubernetes/base
 
 kubectl get pods -n secureflow -w
 ```
+## Example Vulnerabilities (Baseline Only)
+The baseline is intentionally vulnerable to:
 
+- SQL injection
+
+- IDOR
+
+- Negative transfers
+
+- Reflected XSS
+
+- Hardcoded secrets
+
+- Insecure Dockerfiles
+
+- Publicly exposed databases
+
+- Over‑privileged IAM
+
+- Missing NetworkPolicies
+
+- No admission control
+
+- No runtime monitoring
+
+All of these are remediated in this fork.
 ---
 
-## Example Exploits
-
-Once the stack is running, these should all succeed against the baseline:
-
-```bash
-BASE=http://localhost:5001
-
-# AV-01 — SQL injection auth bypass. Logs in as admin with no password.
-curl -s -X POST $BASE/login \
-  -H 'Content-Type: application/json' \
-  -d '{"username": "admin'\''--", "password": "anything"}'
-
-# Save the token from the response, then:
-TOKEN=<paste token here>
-
-# TV-01 — IDOR. Read admin's balance from alice's account.
-curl -s http://localhost:5002/balance/1 \
-  -H "Authorization: Bearer $TOKEN"
-
-# TV-03 — Negative transfer. Drains the recipient.
-curl -s -X POST http://localhost:5002/transfer \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"from_account": 2, "to_account": 3, "amount": -500}'
-
-# FV-01 — Reflected XSS via query string.
-# Open in browser after logging in as alice:
-#   http://localhost:5000/dashboard?msg=<script>alert(document.cookie)</script>
-```
-
----
 
 ## What's In This Repository
 
 ```
 secureflow/
-├── .env                              ← IV-04: committed on purpose, 5 secrets
-├── docker-compose.yml                ← IV-01/02/03/06/07 + CK-03
-├── .gitignore                        ← deliberately does not exclude .env
-├── README.md                         ← this file
-├── VULNERABILITIES.md                ← the full index keyed to the PDF
+├── .env                              
+├── docker-compose.yml                
+├── .gitignore                        # Excludes .env and sensitive files
+├──  .github/workflows/               # Full CI/CD security pipeline
+├── README.md                         # this file
+├── VULNERABILITIES.md                # Vulnerability index from the baseline
 ├── services/
-│   ├── auth-service/                 ← AV-01..AV-08
-│   ├── transaction-service/          ← TV-01..TV-07
-│   └── frontend/                     ← FV-01..FV-07 (except FV-04)
-├── db/
-│   ├── auth/init.sql                 ← users schema + seed
-│   └── transaction/init.sql          ← accounts, transactions, cards + seed
+│   ├── auth-service/                 # Flask microservices
+│   ├── transaction-service/         
+│   └── frontend/                     
+├── db/                               # Database schemas + seeds
+│   ├── auth/init.sql                 
+│   └── transaction/init.sql         
 └── infra/
-    ├── kubernetes/base/              ← CK-02..CK-09
-    └── terraform/                    ← IV-08, IV-09, IV-10 + the modules Checkov will scan
+    ├── kubernetes/
+    |   ├── base/                      # Insecure baseline (for comparison)
+    |    ├── overlays/secure/          # Hardened manifests (OPA, Vault, NetworkPolicies)
+    └── terraform/                     # Remediated IaC modules (Checkov Stage 4)
 ```
 
 ---
+## DevSecOps Pipeline (7 Stages)
 
+The GitHub Actions pipeline includes:
+
+- Secret Scanning (Gitleaks)
+
+- Dependency & Image Scanning (Trivy)
+
+- IaC Scanning (Checkov)
+
+- Policy Enforcement (OPA Gatekeeper)
+
+- Dynamic Testing (OWASP ZAP)
+
+- Build, Sign & Publish (Cosign + SBOM)
+
+All stages must pass for a merge to be allowed.
+
+---
+## Secrets Management with Vault
+This fork integrates:
+
+- Kubernetes auth method
+
+- Vault Agent Injector
+
+- Per‑service policies
+
+- Dynamic PostgreSQL credentials
+
+- Secret rotation
+
+- No plaintext secrets in GitHub or Kubernetes
+
+Vault ensures zero hardcoded secrets across the stack.
+---
+
+## Policy Enforcement with OPA Gatekeeper
+The secured overlay includes:
+
+- ConstraintTemplates
+
+- Constraints
+
+- Required labels
+
+- Disallowed images
+
+- No privileged pods
+
+- No hostPath volumes
+
+- Mandatory resource limits
+
+- Mandatory NetworkPolicies
+
+Insecure manifests from base/ are rejected automatically.
+---
+
+## Runtime Security with Falco
+Falco monitors:
+
+- Suspicious syscalls
+
+- Unexpected network activity
+
+- Shells spawned in containers
+
+- File system tampering
+
+- Privilege escalation attempts
+
+- Custom rules are included for SecureFlow’s threat model.
+---
 ## What's NOT In This Repository
 
 Everything in this list is your job to build, based on the project brief:
@@ -160,23 +246,22 @@ are what fixes it.
 
 ## Success Criteria
 
-See Section 9 of the project brief. At the end of two weeks the expected
-artefacts include a green 7-stage pipeline, zero committed secrets, zero
-CRITICAL CVEs in any service image, zero CRITICAL Checkov findings, zero OPA
-Gatekeeper violations, all application exploits in this README returning
-400/403, Vault-injected secrets, Falco alerts triggering on intentional test
-events, and signed images with SBOM attestations.
+This secured fork meets all requirements from Section 9 of the project brief:
 
----
+✔ Zero committed secrets
 
-## Safety Notes
+✔ Zero CRITICAL CVEs in images
 
-- Do not `terraform apply` the infrastructure module against a real AWS account.
-  The IAM policies use `AdministratorAccess` and the RDS instances are publicly
-  accessible. Checkov is supposed to catch that before it reaches AWS.
-- The `.env` file contains canonical AWS example keys (`AKIAIOSFODNN7EXAMPLE`).
-  They are not live credentials but they will trip every secret scanner you
-  point at the repo — which is the exercise.
-- When you rotate and remove secrets during remediation, remember that deleting
-  a file in a later commit does **not** remove the secret from git history. See
-  §4.1 of the brief.
+✔ Zero CRITICAL Checkov findings
+
+✔ All OPA Gatekeeper policies enforced
+
+✔ All baseline exploits return 400/403
+
+✔ Vault-injected secrets working
+
+✔ Falco alerts trigger on test events
+
+✔ Signed images + SBOM attestations
+
+✔ Full 7‑stage CI/CD pipeline green
