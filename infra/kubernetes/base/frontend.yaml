@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: secureflow
+  labels:
+    app: frontend
+    team: secureflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+      team: secureflow
+      svc: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+        team: secureflow
+        svc: frontend
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "frontend-role"
+        vault.hashicorp.com/agent-inject-secret-SESSION_SECRET: "secureflow/data/frontend"
+        vault.hashicorp.com/agent-inject-template-SESSION_SECRET: |
+          {{- with secret "secureflow/data/frontend" -}}
+          export SESSION_SECRET="{{ .Data.data.SESSION_SECRET }}"
+          {{- end }}
+    spec:
+      serviceAccountName: frontend-sa
+      containers:
+        - name: frontend
+          image: jkairuthi/frontend@sha256:94a8bd76b6dffc8fa73de5333210c98d209a9818132ec6a8f5cf89f9a155bf1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          envFrom:
+            - configMapRef:
+                name: secureflow-config
+          env:
+            - name: AUTH_SERVICE_URL
+              value: "http://auth-service:5001"
+            - name: TRANSACTION_SERVICE_URL
+              value: "http://transaction-service:5002"
+            - name: SESSION_SECRET
+              value: ""
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: secureflow
+  labels:
+    app: frontend
+    team: secureflow
+spec:
+  type: NodePort
+  selector:
+    app: frontend
+    team: secureflow
+    svc: frontend
+  ports:
+    - port: 5000
+      targetPort: 5000
+      nodePort: 30080
+
+

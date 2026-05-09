@@ -1,0 +1,69 @@
+# Sensitive
+# --- Sensitive files ---
+.env
+.env.*
+*.env
+vault-token
+
+# --- Vault ---
+vault/
+vault-agent.log
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+
+# --- Docker / Images ---
+*.tar
+*.tar.gz
+*.tgz
+*.img
+*.iso
+
+# --- Logs ---
+*.log
+logs/
+falco.log
+falco-alerts.log
+falco-alerts-timestamped.log
+falco-events.log
+
+# --- Terraform ---
+.terraform/
+terraform.tfstate
+terraform.tfstate.backup
+.terraform.lock.hcl
+
+# --- Kubeconfig ---
+kubeconfig
+*.kubeconfig
+.kube/
+
+# --- ZAP reports ---
+zap-*.html
+
+# --- Temporary files ---
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Binaries ---
+*.exe
+*.bin
+minikube*
+
+# --- Reports (ONLY reports, not all JSON/MD/TXT) ---
+reports/
+reports/*.json
+reports/*.csv
+reports/*.md
+reports/*.txt
+
+

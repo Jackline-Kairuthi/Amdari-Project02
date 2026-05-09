@@ -1,0 +1,59 @@
+#The codes in this file are to be pasted directly on the Kubernetes pod
+
+# Enter the vault pod
+kubectl exec -it vault-0 -- /bin/sh
+
+#Create secrets in vault for the 3 services
+
+vault kv put secureflow/auth-service \
+    DB_PASSWORD="authpass123" \
+    JWT_SECRET="super-secret-key-123"
+
+vault kv put secureflow/transaction-service \
+    DB_PASSWORD="txpass123" \
+    AUTH_SERVICE_URL="http://auth-service:5001"
+
+vault kv put secureflow/frontend \
+    SESSION_SECRET="changeme" \
+    AUTH_SERVICE_URL="http://auth-service:5001" \
+    TRANSACTION_SERVICE_URL="http://transaction-service:5002"
+
+#Add per-service Vault policy so that each policy allows read ONLY on just its own path
+
+vault policy write auth-service-policy - <<EOF
+path "secureflow/data/auth-service" {
+  capabilities = ["read"]
+}
+EOF
+
+vault policy write transaction-service-policy - <<EOF
+path "secureflow/data/transaction-service" {
+  capabilities = ["read"]
+}
+EOF
+
+vault policy write frontend-policy - <<EOF
+path "secureflow/data/frontend" {
+  capabilities = ["read"]
+}
+EOF
+
+#After creating the Kubernetes ServiceAccounts (codes to be pasted on the pod included in the ServiceAccounts.yaml file) bind them to Vault roles
+
+vault write auth/kubernetes/role/auth-role \
+    bound_service_account_names=auth-sa \
+    bound_service_account_namespaces=default \
+    policies=auth-service-policy \
+    ttl=24h
+
+vault write auth/kubernetes/role/transaction-role \
+    bound_service_account_names=transaction-sa \
+    bound_service_account_namespaces=default \
+    policies=transaction-service-policy \
+    ttl=24h
+
+vault write auth/kubernetes/role/frontend-role \
+    bound_service_account_names=frontend-sa \
+    bound_service_account_namespaces=default \
+    policies=frontend-policy \
+    ttl=24h

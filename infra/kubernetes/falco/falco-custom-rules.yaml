@@ -1,0 +1,53 @@
+# Custom Falco rules for SecureFlow
+
+rules:
+  - rule: Terminal Shell in SecureFlow Pod
+    desc: Detect interactive shell inside any SecureFlow pod
+    condition: >
+      spawned_process and container and
+      container.name startswith "auth-service" or
+      container.name startswith "transaction-service" or
+      container.name startswith "frontend" and
+      proc.name in (bash, sh, zsh)
+    output: >
+      Terminal shell spawned inside SecureFlow pod (user=%user.name container=%container.name cmd=%proc.cmdline)
+    priority: WARNING
+    tags: [secureflow, shell]
+
+  - rule: Write Below Etc
+    desc: Detect writes to /etc inside containers
+    condition: >
+      evt.type in (open, openat) and
+      evt.arg.flags contains O_WRONLY and
+      fd.name startswith "/etc"
+    output: >
+      Write below /etc detected (file=%fd.name user=%user.name container=%container.name)
+    priority: ERROR
+    tags: [filesystem]
+
+  - rule: Unexpected Outbound Connection
+    desc: Detect outbound connections to non‑whitelisted destinations
+    condition: >
+      outbound and not fd.sip in (10.0.0.0/8, 127.0.0.1)
+    output: >
+      Unexpected outbound connection (container=%container.name dest=%fd.sip)
+    priority: WARNING
+    tags: [network]
+
+  - rule: Privilege Escalation Attempt
+    desc: Detect attempts to change user ID inside container
+    condition: >
+      evt.type = setuid and evt.arg.uid != 0
+    output: >
+      Privilege escalation attempt detected (container=%container.name uid=%evt.arg.uid)
+    priority: CRITICAL
+    tags: [privilege]
+
+  - rule: Service Account Token Access
+    desc: Detect reads of Kubernetes service account tokens
+    condition: >
+      open_read and fd.name contains "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    output: >
+      Service account token read (container=%container.name user=%user.name)
+    priority: WARNING
+    tags: [k8s, token]

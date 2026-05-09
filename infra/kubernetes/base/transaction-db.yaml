@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-db
+  namespace: secureflow
+  labels:
+    app: transaction-db
+    team: secureflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-db
+      team: secureflow
+  template:
+    metadata:
+      labels:
+        app: transaction-db
+        team: secureflow
+    spec:
+      serviceAccountName: transaction-db-sa
+      containers:
+        - name: postgres
+          image: postgres@sha256:bbb8851608e3ff4901156bf6a4bf90735a9d44ae014c03811bfdb2f9c354b18b
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: transactiondb
+            - name: POSTGRES_USER
+              value: txuser
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: transaction-db-secret
+                  key: POSTGRES_PASSWORD
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "300m"
+              memory: "512Mi"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: transaction-db
+  namespace: secureflow
+  labels:
+    app: transaction-db
+    team: secureflow
+spec:
+  selector:
+    app: transaction-db
+    team: secureflow
+  ports:
+    - port: 5432
+      targetPort: 5432
+
+

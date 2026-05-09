@@ -1,0 +1,63 @@
+name: Security Exception Request
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  handle-exception:
+    if: contains(github.event.comment.body, '/security-exception')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract PR number
+        id: pr
+        run: echo "pr_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+
+      - name: Extract reason
+        id: extract
+        run: |
+          BODY="${{ github.event.comment.body }}"
+          REASON=$(echo "$BODY" | sed -n 's/.*reason="\([^"]*\)".*/\1/p')
+          [ -z "$REASON" ] && REASON="No reason provided"
+          echo "reason=$REASON" >> $GITHUB_OUTPUT
+
+      - name: Create exception directory
+        run: mkdir -p .security-exceptions
+
+      - name: Create exception file
+        run: |
+          cat <<EOF > .security-exceptions/exception-${{ steps.pr.outputs.pr_number }}.json
+          {
+            "pr": "${{ steps.pr.outputs.pr_number }}",
+            "requested_by": "${{ github.event.comment.user.login }}",
+            "reason": "${{ steps.extract.outputs.reason }}",
+            "status": "PENDING",
+            "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          }
+          EOF
+
+      - name: Commit exception file
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .security-exceptions/
+          git commit -m "Security exception requested for PR #${{ steps.pr.outputs.pr_number }}"
+          git push
+
+      - name: Notify PR
+        run: |
+          gh pr comment ${{ steps.pr.outputs.pr_number }} \
+            --body "📌 **Security Exception Requested**  
+            **Status:** PENDING  
+            **Requested by:** @${{ github.event.comment.user.login }}  
+            **Reason:** \`${{ steps.extract.outputs.reason }}\`  
+            
+            AppSec must update the exception file to **APPROVED** or **DENIED**."
+

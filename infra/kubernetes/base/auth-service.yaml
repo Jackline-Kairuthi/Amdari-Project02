@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: secureflow
+  labels:
+    app: auth-service
+    team: secureflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auth-service
+      team: secureflow
+      svc: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        team: secureflow
+        svc: auth-service
+      annotations:
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "auth-role"
+        vault.hashicorp.com/agent-inject-secret-auth: "secureflow/data/auth"
+        vault.hashicorp.com/agent-inject-template-auth: |
+          {{- with secret "secureflow/data/auth" -}}
+          export AUTH_DB_PASSWORD="{{ .Data.data.AUTH_DB_PASSWORD }}"
+          export JWT_SECRET="{{ .Data.data.JWT_SECRET }}"
+          {{- end }}
+    spec:
+      serviceAccountName: auth-sa
+      containers:
+        - name: auth-service
+          image: jkairuthi/auth-service@sha256:91b34bc17de3a821c98ea5aefd8b4be729a1f871ef314816ffc5a007161ecbd0
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5001
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              for f in /vault/secrets/*; do . "$f"; done
+              exec python app.py
+          envFrom:
+            - configMapRef:
+                name: secureflow-config
+          env:
+            - name: DB_HOST
+              value: auth-db
+            - name: DB_NAME
+              value: authdb
+            - name: DB_USER
+              value: authuser
+            - name: AUTH_DB_PASSWORD
+              value: ""
+            - name: JWT_SECRET
+              value: ""
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: secureflow
+  labels:
+    app: auth-service
+    team: secureflow
+spec:
+  selector:
+    app: auth-service
+    team: secureflow
+    svc: auth-service
+  ports:
+    - port: 5001
+      targetPort: 5001

@@ -1,0 +1,57 @@
+# Kubernetes‑focused Falco rules for SecureFlow
+
+rules:
+  - rule: Privileged Pod Created
+    desc: Detect creation of privileged pods
+    condition: >
+      k8s.audit and
+      k8s.audit.verb = "create" and
+      k8s.audit.object.kind = "Pod" and
+      k8s.audit.object.spec.containers[*].securityContext.privileged = true
+    output: >
+      Privileged pod created (user=%k8s.audit.user.username pod=%k8s.audit.object.metadata.name)
+    priority: CRITICAL
+    tags: [k8s, privileged]
+
+  - rule: HostPath Mount Detected
+    desc: Detect pods mounting hostPath volumes
+    condition: >
+      k8s.audit and
+      k8s.audit.object.spec.volumes[*].hostPath
+    output: >
+      HostPath mount detected (pod=%k8s.audit.object.metadata.name)
+    priority: WARNING
+    tags: [k8s, hostpath]
+
+  - rule: Pod Running as Root
+    desc: Detect pods running as root user
+    condition: >
+      container_started and
+      container.image.repository != "vault" and
+      user.uid = 0
+    output: >
+      Pod running as root (container=%container.name uid=0)
+    priority: WARNING
+    tags: [k8s, root]
+
+  - rule: ConfigMap Modified
+    desc: Detect changes to ConfigMaps
+    condition: >
+      k8s.audit and
+      k8s.audit.object.kind = "ConfigMap" and
+      k8s.audit.verb in ("update", "patch")
+    output: >
+      ConfigMap modified (name=%k8s.audit.object.metadata.name user=%k8s.audit.user.username)
+    priority: WARNING
+    tags: [k8s, configmap]
+
+  - rule: Secret Modified
+    desc: Detect changes to Secrets
+    condition: >
+      k8s.audit and
+      k8s.audit.object.kind = "Secret" and
+      k8s.audit.verb in ("update", "patch")
+    output: >
+      Secret modified (name=%k8s.audit.object.metadata.name user=%k8s.audit.user.username)
+    priority: CRITICAL
+    tags: [k8s, secret]

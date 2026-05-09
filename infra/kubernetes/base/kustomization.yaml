@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: secureflow
+
+resources:
+  - namespace.yaml
+  - serviceaccounts.yaml
+  - configmap.yaml
+  - auth-service.yaml
+  - frontend.yaml
+  - transaction-service.yaml
+  - auth-db.yaml
+  - transaction-db.yaml
+  - networkpolicies.yaml
+

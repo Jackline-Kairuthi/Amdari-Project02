@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: secureflow-config
+  namespace: secureflow
+  labels:
+    app: secureflow
+    team: secureflow
+data:
+  AUTH_DB_HOST: "auth-db"
+  TX_DB_HOST: "transaction-db"
+
+  AUTH_DB_NAME: "authdb"
+  AUTH_DB_USER: "authuser"
+
+  TX_DB_NAME: "transactiondb"
+  TX_DB_USER: "txuser"
+
+
