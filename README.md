@@ -63,6 +63,9 @@ Each service has its own database to support least privilege and per‑service V
 
 ---
 
+## Running the Baseline
+The insecure baseline can be run locally to observe vulnerabilities before remediation.
+
 ## Quick Start — Docker Compose
 
 The insecure baseline can be run locally to observe vulnerabilities before remediation.
@@ -82,17 +85,6 @@ kubectl get pods -n secureflow -w
 
 ```
 
-## Quick Start — Kubernetes (base manifests)
-
-```bash
-kubectl apply -k infra/kubernetes/base
-
-# Everything will apply because there is no admission controller in the way.
-# That is the point. One of your tasks is to install OPA Gatekeeper and watch
-# the base manifests get rejected.
-
-kubectl get pods -n secureflow -w
-```
 ## Example Vulnerabilities (Baseline Only)
 The baseline is intentionally vulnerable to:
 
@@ -121,32 +113,6 @@ The baseline is intentionally vulnerable to:
 All of these are remediated in this fork.
 ---
 
-
-## What's In This Repository
-
-```
-secureflow/
-├── .env                              
-├── docker-compose.yml                
-├── .gitignore                        # Excludes .env and sensitive files
-├──  .github/workflows/               # Full CI/CD security pipeline
-├── README.md                         # this file
-├── VULNERABILITIES.md                # Vulnerability index from the baseline
-├── services/
-│   ├── auth-service/                 # Flask microservices
-│   ├── transaction-service/         
-│   └── frontend/                     
-├── db/                               # Database schemas + seeds
-│   ├── auth/init.sql                 
-│   └── transaction/init.sql         
-└── infra/
-    ├── kubernetes/
-    |   ├── base/                      # Insecure baseline (for comparison)
-    |    ├── overlays/secure/          # Hardened manifests (OPA, Vault, NetworkPolicies)
-    └── terraform/                     # Remediated IaC modules (Checkov Stage 4)
-```
-
----
 ## DevSecOps Pipeline (7 Stages)
 
 The GitHub Actions pipeline includes:
@@ -162,6 +128,8 @@ The GitHub Actions pipeline includes:
 - Dynamic Testing (OWASP ZAP)
 
 - Build, Sign & Publish (Cosign + SBOM)
+
+- Deployment to secure Kubernetes overlays
 
 All stages must pass for a merge to be allowed.
 
@@ -219,29 +187,7 @@ Falco monitors:
 
 - Privilege escalation attempts
 
-- Custom rules are included for SecureFlow’s threat model.
----
-## What's NOT In This Repository
-
-Everything in this list is your job to build, based on the project brief:
-
-- `.github/workflows/*` — the GitHub Actions pipeline
-- `.gitleaks.toml` — custom Gitleaks rules for Flask/JWT/DB patterns
-- `sonar-project.properties` — SonarQube configuration
-- `pipeline/scripts/security-gate.sh` — the aggregation script
-- Cosign keys and signing workflow
-- OPA Gatekeeper ConstraintTemplates and Constraints
-- Falco custom rules
-- HashiCorp Vault policies, roles, and Agent Injector annotations
-- Kubernetes NetworkPolicies
-- Hardened Kustomize overlays (the `base/` here is the broken version)
-- Prometheus configuration and Grafana dashboards
-- OWASP ZAP scan configuration
-
-If you find yourself adding a file and wondering whether it belongs in the
-baseline or the solution — it's in the solution. The baseline is broken; you
-are what fixes it.
-
+Custom rules are included for SecureFlow’s threat model.
 ---
 
 ## Success Criteria
