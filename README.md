@@ -62,6 +62,10 @@ SecureFlow is a microservices banking application consisting of:
 Each service has its own database to support least privilege and per‑service Vault policies.
 
 ---
+## Running the Baseline (For Learning Only)
+
+The insecure baseline can be run locally to observe vulnerabilities before remediation.
+Note: The insecure baseline exists only for demonstration and is not part of this secured fork.
 
 ## Docker Compose
 
