@@ -63,10 +63,7 @@ Each service has its own database to support least privilege and per‑service V
 
 ---
 
-## Running the Baseline
-The insecure baseline can be run locally to observe vulnerabilities before remediation.
-
-## Quick Start — Docker Compose
+## Docker Compose
 
 The insecure baseline can be run locally to observe vulnerabilities before remediation.
 
@@ -150,6 +147,7 @@ This fork integrates:
 - No plaintext secrets in GitHub or Kubernetes
 
 Vault ensures zero hardcoded secrets across the stack.
+
 ---
 
 ## Policy Enforcement with OPA Gatekeeper
@@ -172,6 +170,7 @@ The secured overlay includes:
 - Mandatory NetworkPolicies
 
 Insecure manifests from base/ are rejected automatically.
+
 ---
 
 ## Runtime Security with Falco
@@ -188,6 +187,7 @@ Falco monitors:
 - Privilege escalation attempts
 
 Custom rules are included for SecureFlow’s threat model.
+
 ---
 
 ## Success Criteria
